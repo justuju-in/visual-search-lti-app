@@ -3,12 +3,13 @@ const path = require('path')
 const routes = require('./src/routes')
 
 const lti = require('ltijs').Provider
+const mongoUri = `mongodb://${process.env.DB_USER || 'root'}:${process.env.DB_PASS || 'examplepassword'}@${process.env.DB_HOST || 'mongo'}/${process.env.DB_NAME || 'visualsearchdb'}?authSource=admin`;
 
 // Setup
 lti.setup(process.env.LTI_KEY,
   {
-    url: 'mongodb://' + process.env.DB_HOST + '/' + process.env.DB_NAME + '?authSource=admin',
-    connection: { user: process.env.DB_USER, pass: process.env.DB_PASS }
+      // Use the MongoDB container name as the host when running in Docker
+      url: mongoUri
   }, {
     staticPath: path.join(__dirname, './public'), // Path to static files
     cookies: {
