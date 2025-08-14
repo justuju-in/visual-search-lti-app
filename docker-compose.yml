@@ -1,13 +1,13 @@
 version: '3.8'
 services:
   mongo:
-    image: mongo:latest
+    image: mongo:${MONGO_VERSION:-latest}
     container_name: mongo
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: secret123
-      MONGO_INITDB_DATABASE: visualsearchdb
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS}
+      MONGO_INITDB_DATABASE: ${DB_NAME}
     ports:
       - "127.0.0.1:27017:27017"
     volumes:

@@ -1,34 +1,30 @@
-<div align="center">
-	<br>
-	<br>
-	<a href="https://cvmcosta.github.io/ltijs"><img width="360" src="https://raw.githubusercontent.com/Cvmcosta/ltijs/master/docs/logo-300.svg"></img></a>
-  <a href="https://site.imsglobal.org/certifications/coursekey/ltijs"​ target='_blank'><img width="80" src="https://www.imsglobal.org/sites/default/files/IMSconformancelogoREG.png" alt="IMS Global Certified" border="0"></img></a>
-</div>
 
 
-# Ltijs Demo Server
+# Visual Search LTI App
 
-> Ltijs v5 demo server
+This is a Node.js/ltijs-based LTI 1.3 tool with Dockerized MongoDB and environment-driven configuration.
 
-### Usage
+## Quick Start
 
-- Download or clone the repo
+1. **Clone the repo**
+2. **Configure environment variables**
+  - Copy `.env.example` to `.env` and set all required values (MongoDB, LTI, tool provider, etc.)
+3. **Start MongoDB (Docker)**
+  - `docker compose up -d`
+4. **Install dependencies**
+  - `npm install`
+5. **Run the app**
+  - `npm start` or `node index.js`
 
-- Setup `.env` file with the relevant variables
+## Environment Variables
+All secrets and config are managed via `.env`, `.env.dev`, `.env.prod`.
+See `.env.example` for all available options.
 
-  ```
-  DB_HOST=localhost
-  DB_NAME=ltidb
-  DB_USER=user
-  DB_PASS=pass
-  LTI_KEY=LTIKEY
-  ```
-  *DB_USER and DB_PASS are not required*
+## Docker
+MongoDB is managed via Docker Compose. All credentials are set via environment variables.
 
-- Run `npm install`
+## LTI Platform Registration
+Platforms are registered automatically on startup. See `index.js` for details.
 
-- Run `npm start` 
-
-### React application
-
- The code for the react application used with this project can be found [here](https://github.com/Cvmcosta/ltijs-demo-client).
+## Frontend
+The React frontend is served from the `public` directory. No secrets are hardcoded in frontend files.

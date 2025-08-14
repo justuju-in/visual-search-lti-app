@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Ltijs demo server",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "env DEBUG=provider:* node index.js"
@@ -14,7 +15,7 @@
     "1.3",
     "imslti"
   ],
-  "author": "cvmcosta",
+  "author": "Justuju",
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.6.1",

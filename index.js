@@ -1,52 +1,72 @@
-require('dotenv').config()
-const path = require('path')
-const routes = require('./src/routes')
 
-const lti = require('ltijs').Provider
-const mongoUri = `mongodb://${process.env.DB_USER || 'root'}:${process.env.DB_PASS || 'examplepassword'}@${process.env.DB_HOST || 'mongo'}/${process.env.DB_NAME || 'visualsearchdb'}?authSource=admin`;
+import path from "path";
+import { fileURLToPath } from "url";
+import { Provider } from "ltijs";
+import routes from "./src/routes.js";
+import dotenv from "dotenv";
+dotenv.config();
 
-// Setup
-lti.setup(process.env.LTI_KEY,
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const lti = Provider;
+
+// 1. Setup the LTI provider (with local MongoDB container)
+await lti.setup(
+  process.env.LTI_KEY || "supersecret", // JWT secret
   {
-      // Use the MongoDB container name as the host when running in Docker
-      url: mongoUri
-  }, {
-    staticPath: path.join(__dirname, './public'), // Path to static files
-    cookies: {
-      secure: false, // Set secure to true if the testing platform is in a different domain and https is being used
-      sameSite: '' // Set sameSite to 'None' if the testing platform is in a different domain and https is being used
+    url: `mongodb://${process.env.DB_USER || "root"}:${process.env.DB_PASS || "secret123"}@${process.env.DB_HOST || "localhost"}:27017/${process.env.DB_NAME || "visualsearchdb"}?authSource=admin`,
+    options: {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     },
-    devMode: true // Set DevMode to true if the testing platform is in a different domain and https is not being used
-  })
+  },
+  {
+    appRoute: "/",
+    loginRoute: "/login",
+    //keysetRoute: '/keys',
+    cookies: {
+      secure: false,
+      sameSites: "None",
+    },
+    staticPath: path.join(__dirname, "./public"),
+    devMode: true,
+    dynRegRoute: "/register", // Setting up dynamic registration route. Defaults to '/register'
+    dynReg: {
+  url: process.env.TOOL_PROVIDER_URL, // Tool Provider URL. Required field.
+  name: process.env.TOOL_PROVIDER_NAME, // Tool Provider name. Required field.
+  logo: process.env.TOOL_PROVIDER_LOGO, // Tool Provider logo URL.
+  description: process.env.TOOL_PROVIDER_DESCRIPTION, // Tool Provider description.
+  redirectUris: process.env.TOOL_PROVIDER_REDIRECT_URIS ? process.env.TOOL_PROVIDER_REDIRECT_URIS.split(",") : [], // Comma-separated list in .env
+  //customParameters: { key: 'value' }, // Custom parameters.
+  autoActivate: process.env.TOOL_PROVIDER_AUTO_ACTIVATE === "true", // Defaults to false
+    },
+  }
+);
 
-// When receiving successful LTI launch redirects to app
-lti.onConnect(async (token, req, res) => {
-  return res.sendFile(path.join(__dirname, './public/index.html'))
-})
+// 2. Define behavior when the tool is launched
+lti.onConnect((token, req, res) => {
+  res.sendFile(path.join(__dirname, "./public/index.html"));
+});
+// Use the routes defined in routes.js
+lti.app.use(routes);
 
-// When receiving deep linking request redirects to deep screen
-lti.onDeepLinking(async (token, req, res) => {
-  return lti.redirect(res, '/deeplink', { newResource: true })
-})
-
-// Setting up routes
-lti.app.use(routes)
-
-// Setup function
 const setup = async () => {
-  await lti.deploy({ port: process.env.PORT })
+  // 3. Deploy the provider first — this must come before registering platforms!
+  await lti.deploy({ port: 3000 });
 
-  /**
-   * Register platform
-   */
-  /* await lti.registerPlatform({
-    url: 'http://localhost/moodle',
-    name: 'Platform',
-    clientId: 'CLIENTID',
-    authenticationEndpoint: 'http://localhost/moodle/mod/lti/auth.php',
-    accesstokenEndpoint: 'http://localhost/moodle/mod/lti/token.php',
-    authConfig: { method: 'JWK_SET', key: 'http://localhost/moodle/mod/lti/certs.php' }
-  }) */
-}
+  // Register Moodle platform (replace values with your actual Moodle config)
+  await lti.registerPlatform({
+    url: "https://dev.csbasics.in", // Moodle base URL
+    name: "Moodle Dev",
+    clientId: "b48snjpqQtQuSN8", // Replace with your actual client ID from Moodle
+    authenticationEndpoint: "https://dev.csbasics.in/mod/lti/auth.php",
+    accesstokenEndpoint: "https://dev.csbasics.in/mod/lti/token.php",
+    authConfig: {
+      method: "JWK_SET",
+      key: "https://dev.csbasics.in/mod/lti/certs.php",
+    },
+  });
+};
 
-setup()
+setup();
