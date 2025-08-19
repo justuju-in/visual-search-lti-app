@@ -80,7 +80,13 @@ check_prerequisites() {
     else
         print_warning "htpasswd not found - will use fallback password generation"
     fi
-    
+
+    #check the log directory
+    if [ ! -d "./logs" ]; then
+        print_status "Creating log directory..."
+        mkdir -p ./logs
+    fi
+
     if [ ${#missing_deps[@]} -ne 0 ]; then
         print_error "Missing dependencies: ${missing_deps[*]}"
         echo -e "\nPlease install the missing dependencies:"
