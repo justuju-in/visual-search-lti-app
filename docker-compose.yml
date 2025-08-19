@@ -48,7 +48,6 @@ services:
       - --certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-      - --providers.file.filename=/etc/traefik/traefik.yml
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
@@ -63,7 +62,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_letsencrypt:/letsencrypt
-      - ./docker/traefik.yml:/etc/traefik/traefik.yml:ro
     networks:
       - db-network
 
