@@ -36,6 +36,8 @@ services:
     image: traefik:v2.11
     container_name: traefik
     restart: unless-stopped
+    environment:
+      - TRAEFIK_ACME_EMAIL=${TRAEFIK_ACME_EMAIL}
     command:
       - --api.dashboard=true
       - --api.insecure=false
