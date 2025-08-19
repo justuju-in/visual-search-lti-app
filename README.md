@@ -10,7 +10,10 @@ Node.js/ltijs-based LTI 1.3 tool with Dockerized deployment, Traefik reverse pro
    ```bash
    git clone <repo-url>
    cd visual-search-lti-app
-   cp .env.dev .env  # Use development settings
+   # Run the deployment script to generate your .env file
+   ./deploy.sh
+   # Or, copy .env.example to .env and fill in values manually
+   cp .env.example .env
    ```
 
 2. **Start services**
@@ -69,3 +72,45 @@ Node.js/ltijs-based LTI 1.3 tool with Dockerized deployment, Traefik reverse pro
 - Dockerized deployment
 - HTTPS with Let's Encrypt
 - Password-protected admin dashboard
+
+## Logging (Beginner-Friendly)
+
+All important events, errors, and requests are logged using the `winston` logger.
+
+- **Development:** Logs appear in your terminal.
+- **Production:** Logs are saved to `logs/app.log`.
+- Each request is tagged with a unique request ID for easy tracing.
+- Errors include stack traces for troubleshooting.
+
+**View logs:**
+```bash
+tail -f logs/app.log
+```
+
+**Change log level:**
+Set `LOG_LEVEL` in your environment (e.g., `LOG_LEVEL=debug`).
+
+**Example log output:**
+```
+[2025-08-19T12:00:00.000Z] info: [startup] LTI provider deployed on port 3000
+[2025-08-19T12:00:01.000Z] info: [startup] Moodle platform registered
+[2025-08-19T12:00:02.000Z] error: [req-id] Grade submission error: ...
+```
+
+## Environment Variables
+
+**Required for both dev and prod:**
+- `DB_USER`, `DB_PASS`, `DB_NAME` - MongoDB credentials
+- `LTI_KEY` - JWT secret for LTI
+- `APP_DOMAIN` - Your domain name (prod only)
+- `TRAEFIK_ACME_EMAIL` - Email for SSL certificates (prod only)
+- `TOOL_PROVIDER_*` - LTI tool configuration
+
+**Config Files:**
+- `.env.example` - Reference template for all required variables
+
+**Usage:**
+- Run `./deploy.sh` to generate your `.env` file interactively
+- Or copy `.env.example` to `.env` and fill in values manually
+
+Do not commit your `.env` file to version control—generate it per deployment.

@@ -3,16 +3,25 @@ import path from 'path';
 import { Provider as lti } from 'ltijs';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import logger from './logger.js';
+import { randomUUID } from 'crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
 // Logging middleware to debug incoming requests
+// Add a request ID to each request for traceability
 router.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  console.log('Headers:', req.headers);
+  req.requestId = randomUUID();
+  next();
+});
+
+// Enhanced logging middleware
+router.use((req, res, next) => {
+  logger.info(`[${req.requestId}] ${req.method} ${req.originalUrl}`);
+  logger.debug(`[${req.requestId}] Headers: ${JSON.stringify(req.headers)}`);
   if (req.body && Object.keys(req.body).length) {
-    console.log('Body:', req.body);
+    logger.debug(`[${req.requestId}] Body: ${JSON.stringify(req.body)}`);
   }
   next();
 });
@@ -33,11 +42,11 @@ try {
       comment: comment, // Optional feedback
       timestamp: new Date().toISOString()
     };
-    console.log('Submitting grade object:', gradeObj);
+  logger.info(`[${req.requestId}] Submitting grade object: ${JSON.stringify(gradeObj)}`);
 
     // Defensive checks for platformContext and endpoint
     if (!idtoken.platformContext || !idtoken.platformContext.endpoint) {
-      console.error('platformContext or endpoint is undefined:', idtoken.platformContext);
+  logger.error(`[${req.requestId}] platformContext or endpoint is undefined: ${JSON.stringify(idtoken.platformContext)}`);
       return res.status(400).send({ err: 'platformContext or endpoint is undefined' });
     }
 
@@ -50,9 +59,9 @@ try {
       const lineItems = response.lineItems;
       if (lineItems.length === 0) {
         // Creating line item if there is none
-        console.log("Creating new line item");
+        logger.info(`[${req.requestId}] Creating new line item`);
         if (!idtoken.platformContext.resource) {
-          console.error('platformContext.resource is undefined:', idtoken.platformContext);
+          logger.error(`[${req.requestId}] platformContext.resource is undefined: ${JSON.stringify(idtoken.platformContext)}`);
           return res.status(400).send({ err: 'platformContext.resource is undefined' });
         }
         const newLineItem = {
@@ -72,9 +81,11 @@ try {
       lineItemId,
       gradeObj
     );
-    return res.send(responseGrade);
+  logger.info(`[${req.requestId}] Grade submitted successfully for user ${gradeObj.userId}`);
+  return res.send(responseGrade);
   } catch (err) {
-    return res.status(500).send({ err: err.message });
+  logger.error(`[${req.requestId}] Grade submission error: ${err.message}\nStack: ${err.stack}`);
+  return res.status(500).send({ err: err.message });
   }
 });
 
