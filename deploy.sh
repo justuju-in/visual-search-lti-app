@@ -221,12 +221,26 @@ collect_deployment_info() {
     read -p "Enter tool description [Interactive Visual Search Tool]: " tool_desc
     tool_desc=${tool_desc:-"Interactive Visual Search Tool"}
     
+    # LMS Platform configuration
+    print_status "Configuring LMS platform..."
+    read -p "Enter your LMS domain name (e.g., lms.example.com) [your-lms.example.com]: " lms_domain
+    lms_domain=${lms_domain:-"your-lms.example.com"}
+    read -p "Enter your LMS platform name [Your LMS]: " platform_name
+    platform_name=${platform_name:-"Your LMS"}
+    read -p "Enter your LMS client ID [your-client-id]: " platform_client_id
+    platform_client_id=${platform_client_id:-"your-client-id"}
+
+    platform_url="https://$lms_domain"
+    platform_auth_endpoint="https://$lms_domain/mod/lti/auth.php"
+    platform_token_endpoint="https://$lms_domain/mod/lti/token.php"
+    platform_keyset_endpoint="https://$lms_domain/mod/lti/certs.php"
+
     # Admin credentials
     print_status "Setting up admin credentials..."
     admin_user="admin"
     admin_pass=$(generate_password 12)
     admin_hash=$(generate_bcrypt "$admin_pass")
-    
+
     print_success "Configuration collected successfully"
 }
 
@@ -259,15 +273,15 @@ TOOL_PROVIDER_AUTO_ACTIVATE=true
 # Traefik Configuration
 APP_DOMAIN=$app_domain
 TRAEFIK_ACME_EMAIL=$acme_email
-TRAEFIK_DASHBOARD_AUTH=admin:\$\$2y\$\$05\$\$.eBEUbkCmao./DP1EiZkuOY2lAE5bXMIUpRuN0I/Z1GMKUPeb61GK
+TRAEFIK_DASHBOARD_AUTH=admin:$$2y$$05$$.eBEUbkCmao./DP1EiZkuOY2lAE5bXMIUpRuN0I/Z1GMKUPeb61GK
 
-# Platform Registration (Update with your LMS details)
-PLATFORM_URL=https://your-lms.example.com
-PLATFORM_NAME=Your LMS
-PLATFORM_CLIENT_ID=your-client-id
-PLATFORM_AUTH_ENDPOINT=https://your-lms.example.com/mod/lti/auth.php
-PLATFORM_TOKEN_ENDPOINT=https://your-lms.example.com/mod/lti/token.php
-PLATFORM_KEYSET_ENDPOINT=https://your-lms.example.com/mod/lti/certs.php
+# Platform Registration
+PLATFORM_URL=$platform_url
+PLATFORM_NAME=$platform_name
+PLATFORM_CLIENT_ID=$platform_client_id
+PLATFORM_AUTH_ENDPOINT=$platform_auth_endpoint
+PLATFORM_TOKEN_ENDPOINT=$platform_token_endpoint
+PLATFORM_KEYSET_ENDPOINT=$platform_keyset_endpoint
 EOF
     
     print_success "Environment file created: $env_file"
