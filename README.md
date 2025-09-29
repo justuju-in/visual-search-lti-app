@@ -1,116 +1,103 @@
-
-
 # Visual Search LTI App
 
-Node.js/ltijs-based LTI 1.3 tool with Dockerized deployment, Traefik reverse proxy, and environment-driven configuration.
+Node.js / [ltijs](https://cvmcosta.me/ltijs) **LTI 1.3 tool**, with MongoDB and Traefik for reverse proxy + HTTPS.
 
-## Quick Start (Development)
+---
 
-1. **Clone and configure**
-   ```bash
-   git clone <repo-url>
-   cd visual-search-lti-app
-   # Run the deployment script to generate your .env file
-   ./deploy.sh
-   # Or, copy .env.example to .env and fill in values manually
-   cp .env.example .env
-   ```
+## 🚀 Quick Start
 
-2. **Start services**
-   ```bash
-   # For development (HTTP, local testing)
-   docker compose -f docker-compose.dev.yml up --build
-   
-   # For production-like testing (HTTPS)
-   docker compose up --build
-   ```
+```bash
+# Clone and configure
+git clone <repo-url>
+cd visual-search-lti-app
+cp .env.example .env.local   # for dev
+```
 
-3. **Access**
-   - App: http://localhost:3000 (dev) or http://localhost (prod)
-   - Traefik Dashboard: http://localhost/dashboard/ (admin/admin)
+**Development** (HTTP, ports exposed):
 
-## Production Deployment
+```bash
+make dev
+```
 
-1. **Set production environment**
-   ```bash
-   cp .env.prod .env
-   # Update APP_DOMAIN, TRAEFIK_ACME_EMAIL, and all credentials
-   ```
+* App → [http://localhost:3000](http://localhost:3000)
+* Dashboard → [http://localhost:8080/dashboard](http://localhost:8080/dashboard)
 
-2. **Deploy with HTTPS**
-   ```bash
-   docker compose up -d --build
-   ```
+**Production** (HTTPS, Traefik + Let’s Encrypt):
 
-3. **Access**
-   - App: https://yourdomain.com
-   - Dashboard: https://yourdomain.com/dashboard/
+```bash
+cp .env.example .env   # update domain + secrets
+make prod
+```
 
-## Environment Variables
+* App → [https://yourdomain.com](https://yourdomain.com)
+* Dashboard → [https://yourdomain.com/dashboard](https://yourdomain.com/dashboard)
 
-**Required:**
-- `DB_USER`, `DB_PASS`, `DB_NAME` - MongoDB credentials
-- `LTI_KEY` - JWT secret for LTI
-- `APP_DOMAIN` - Your domain name
-- `TRAEFIK_ACME_EMAIL` - Email for SSL certificates
-- `TOOL_PROVIDER_*` - LTI tool configuration
+---
 
-**Config Files:**
-- `.env.dev` - Development (HTTP, direct access)
-- `.env.prod` - Production (HTTPS, domain-based)
+## ⚙️ Config
 
-## Architecture
+* `.env.local` → Development (HTTP)
+* `.env` → Production (HTTPS)
+* `.env.example` → Template (copy & edit)
 
-- **MongoDB** - Database with authentication
-- **Node.js App** - LTI 1.3 provider on port 3000
-- **Traefik** - Reverse proxy with SSL termination
+Key vars:
 
-## Features
+* `DB_USER`, `DB_PASS`, `DB_NAME` → MongoDB
+* `APP_DOMAIN` → App domain (prod)
+* `TRAEFIK_ACME_EMAIL` → SSL email
+* `LTI_KEY` → JWT secret
+* `TOOL_PROVIDER_*` → LTI metadata
 
-- LTI 1.3 dynamic registration
-- Grade passback with comments
-- Dockerized deployment
-- HTTPS with Let's Encrypt
-- Password-protected admin dashboard
+---
 
-## Logging (Beginner-Friendly)
+## 🏗️ Stack
 
-All important events, errors, and requests are logged using the `winston` logger.
+* **MongoDB** – LTI storage
+* **Node.js (ltijs)** – LTI provider on port 3000
+* **Traefik** – Proxy, HTTPS, dashboard with auth
 
-- **Development:** Logs appear in your terminal.
-- **Production:** Logs are saved to `logs/app.log`.
-- Each request is tagged with a unique request ID for easy tracing.
-- Errors include stack traces for troubleshooting.
+---
 
-**View logs:**
+## 📜 Logging
+
+* Dev → console
+* Prod → `logs/app.log`
+
 ```bash
 tail -f logs/app.log
 ```
 
-**Change log level:**
-Set `LOG_LEVEL` in your environment (e.g., `LOG_LEVEL=debug`).
+Set level with `LOG_LEVEL=debug`.
 
-**Example log output:**
+---
+
+## 🛠️ Makefile Cheatsheet
+
+**Development**
+
+```bash
+make dev        # Start dev env
+make build      # Build dev images
+make down       # Stop dev env
+make logs       # Tail all logs
 ```
-[2025-08-19T12:00:00.000Z] info: [startup] LTI provider deployed on port 3000
-[2025-08-19T12:00:01.000Z] info: [startup] Moodle platform registered
-[2025-08-19T12:00:02.000Z] error: [req-id] Grade submission error: ...
+
+**Production**
+
+```bash
+make prod       # Start prod env
+make prod-build # Build prod images
+make prod-down  # Stop prod env
 ```
 
-## Environment Variables
+**Utilities**
 
-**Required for both dev and prod:**
-- `DB_USER`, `DB_PASS`, `DB_NAME` - MongoDB credentials
-- `LTI_KEY` - JWT secret for LTI
-- `APP_DOMAIN` - Your domain name (prod only)
-- `TRAEFIK_ACME_EMAIL` - Email for SSL certificates (prod only)
-- `TOOL_PROVIDER_*` - LTI tool configuration
+```bash
+make status     # Show running containers
+make restart-app # Restart Node.js app
+make restart-db # Restart MongoDB
+make logs-app   # App logs only
+make logs-db    # Mongo logs only
+make fresh      # Clean & setup fresh dev env
+```
 
-**Config Files:**
-- `.env.example` - Reference template for all required variables
-
-**Usage:**
-- Run `./deploy.sh` to generate your `.env` file interactively
-- Or copy `.env.example` to `.env` and fill in values manually
-
-Do not commit your `.env` file to version control—generate it per deployment.
