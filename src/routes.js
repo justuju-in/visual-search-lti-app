@@ -1,123 +1,95 @@
-const router = require('express').Router()
-const path = require('path')
+import express from 'express';
+import path from 'path';
+import { Provider as lti } from 'ltijs';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import logger from './logger.js';
+import { randomUUID } from 'crypto';
 
-// Requiring Ltijs
-const lti = require('ltijs').Provider
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const router = express.Router();
+
+// Logging middleware to debug incoming requests
+// Add a request ID to each request for traceability
+router.use((req, res, next) => {
+  req.requestId = randomUUID();
+  next();
+});
+
+// Enhanced logging middleware
+router.use((req, res, next) => {
+  logger.info(`[${req.requestId}] ${req.method} ${req.originalUrl}`);
+  logger.debug(`[${req.requestId}] Headers: ${JSON.stringify(req.headers)}`);
+  if (req.body && Object.keys(req.body).length) {
+    logger.debug(`[${req.requestId}] Body: ${JSON.stringify(req.body)}`);
+  }
+  next();
+});
 
 // Grading route
 router.post('/grade', async (req, res) => {
-  try {
-    const idtoken = res.locals.token // IdToken
-    const score = req.body.grade // User numeric score sent in the body
-    // Creating Grade object
+try {
+    const idtoken = res.locals.token; // IdToken
+    // Accept grade and comment from request body
+    const { grade, comment } = req.body;
+    // Creating Grade object with timestamp and comment
     const gradeObj = {
       userId: idtoken.user,
-      scoreGiven: score,
-      scoreMaximum: 100,
-      activityProgress: 'Completed',
-      gradingProgress: 'FullyGraded'
+      scoreGiven: Number(grade),
+      scoreMaximum: 10000,
+      activityProgress: "Completed",
+      gradingProgress: "FullyGraded",
+      comment: comment, // Optional feedback
+      timestamp: new Date().toISOString()
+    };
+  logger.info(`[${req.requestId}] Submitting grade object: ${JSON.stringify(gradeObj)}`);
+
+    // Defensive checks for platformContext and endpoint
+    if (!idtoken.platformContext || !idtoken.platformContext.endpoint) {
+  logger.error(`[${req.requestId}] platformContext or endpoint is undefined: ${JSON.stringify(idtoken.platformContext)}`);
+      return res.status(400).send({ err: 'platformContext or endpoint is undefined' });
     }
 
     // Selecting linetItem ID
-    let lineItemId = idtoken.platformContext.endpoint.lineitem // Attempting to retrieve it from idtoken
+    let lineItemId = idtoken.platformContext.endpoint.lineitem; // Attempting to retrieve it from idtoken
     if (!lineItemId) {
-      const response = await lti.Grade.getLineItems(idtoken, { resourceLinkId: true })
-      const lineItems = response.lineItems
+      const response = await lti.Grade.getLineItems(idtoken, {
+        resourceLinkId: true,
+      });
+      const lineItems = response.lineItems;
       if (lineItems.length === 0) {
         // Creating line item if there is none
-        console.log('Creating new line item')
-        const newLineItem = {
-          scoreMaximum: 100,
-          label: 'Grade',
-          tag: 'grade',
-          resourceLinkId: idtoken.platformContext.resource.id
+        logger.info(`[${req.requestId}] Creating new line item`);
+        if (!idtoken.platformContext.resource) {
+          logger.error(`[${req.requestId}] platformContext.resource is undefined: ${JSON.stringify(idtoken.platformContext)}`);
+          return res.status(400).send({ err: 'platformContext.resource is undefined' });
         }
-        const lineItem = await lti.Grade.createLineItem(idtoken, newLineItem)
-        lineItemId = lineItem.id
-      } else lineItemId = lineItems[0].id
+        const newLineItem = {
+          scoreMaximum: 10000,
+          label: "Grade",
+          tag: "grade",
+          resourceLinkId: idtoken.platformContext.resource.id,
+        };
+        const lineItem = await lti.Grade.createLineItem(idtoken, newLineItem);
+        lineItemId = lineItem.id;
+      } else lineItemId = lineItems[0].id;
     }
 
     // Sending Grade
-    const responseGrade = await lti.Grade.submitScore(idtoken, lineItemId, gradeObj)
-    return res.send(responseGrade)
+    const responseGrade = await lti.Grade.submitScore(
+      idtoken,
+      lineItemId,
+      gradeObj
+    );
+  logger.info(`[${req.requestId}] Grade submitted successfully for user ${gradeObj.userId}`);
+  return res.send(responseGrade);
   } catch (err) {
-    console.log(err.message)
-    return res.status(500).send({ err: err.message })
+  logger.error(`[${req.requestId}] Grade submission error: ${err.message}\nStack: ${err.stack}`);
+  return res.status(500).send({ err: err.message });
   }
-})
-
-// Names and Roles route
-router.get('/members', async (req, res) => {
-  try {
-    const result = await lti.NamesAndRoles.getMembers(res.locals.token)
-    if (result) return res.send(result.members)
-    return res.sendStatus(500)
-  } catch (err) {
-    console.log(err.message)
-    return res.status(500).send(err.message)
-  }
-})
-
-// Deep linking route
-router.post('/deeplink', async (req, res) => {
-  try {
-    const resource = req.body
-
-    const items = {
-      type: 'ltiResourceLink',
-      title: 'Ltijs Demo',
-      custom: {
-        name: resource.name,
-        value: resource.value
-      }
-    }
-
-    const form = await lti.DeepLinking.createDeepLinkingForm(res.locals.token, items, { message: 'Successfully Registered' })
-    if (form) return res.send(form)
-    return res.sendStatus(500)
-  } catch (err) {
-    console.log(err.message)
-    return res.status(500).send(err.message)
-  }
-})
-
-// Return available deep linking resources
-router.get('/resources', async (req, res) => {
-  const resources = [
-    {
-      name: 'Resource1',
-      value: 'value1'
-    },
-    {
-      name: 'Resource2',
-      value: 'value2'
-    },
-    {
-      name: 'Resource3',
-      value: 'value3'
-    }
-  ]
-  return res.send(resources)
-})
-
-// Get user and context information
-router.get('/info', async (req, res) => {
-  const token = res.locals.token
-  const context = res.locals.context
-
-  const info = { }
-  if (token.userInfo) {
-    if (token.userInfo.name) info.name = token.userInfo.name
-    if (token.userInfo.email) info.email = token.userInfo.email
-  }
-
-  if (context.roles) info.roles = context.roles
-  if (context.context) info.context = context.context
-
-  return res.send(info)
-})
+});
 
 // Wildcard route to deal with redirecting to React routes
-router.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')))
+// router.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')))
 
-module.exports = router
+export default router;

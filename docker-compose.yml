@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:${MONGO_VERSION:-latest}
+    container_name: mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS}
+      MONGO_INITDB_DATABASE: ${DB_NAME}
+    ports:
+      - "${DB_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - db-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${APP_CONTAINER_NAME:-lti-app}
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    depends_on:
+      - mongo
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DEBUG: ${DEBUG:-express:*}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${APP_NAME:-lti-app}.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.${APP_NAME:-lti-app}.entrypoints=web"
+      - "traefik.http.services.${APP_NAME:-lti-app}.loadbalancer.server.port=3000"
+    networks:
+      - db-network
+
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:${TRAEFIK_HTTP_PORT:-80}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+      - "traefik.http.routers.dashboard.service=api@internal"
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - db-network
+
+volumes:
+  mongo_data:
+
+networks:
+  db-network:
+    driver: bridge
